@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick GPT设置</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        button[type="submit"] {
+            background-color: #0275d8;
+        }
+        button[type="submit"]:hover {
+            background-color: #025aa5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Quick GPT配置文件</h1>
+        <form id="settingsForm">
+            <div class="form-group">
+                <label for="userName">用户名(交互时显示的名称):</label>
+                <input type="text" id="userName" name="userName">
+            </div>
+            <div class="form-group">
+                <h2>API配置</h2>
+                <p><b>默认的API密钥容量有限，可能已经耗尽无法使用</b></p>
+                <p>建议使用siliconflow获得免费的API密钥，申请地址：<a href="https://cloud.siliconflow.cn/">https://cloud.siliconflow.cn/</a></p>
+                <p>注册账号后在左侧<b>账号管理</b>选择<b>API密钥</b>，点击创建密钥即可获得API密钥</p>
+                <p>当然，你也可以使用其他大部分服务商的API，只需要填写对应的Base URL和API密钥即可</p>
+                <div id="apiConfig">
+                    <!-- API Config will be dynamically generated here -->
+                </div>
+            </div>
+            <button type="button" onclick="addNewService()">添加Service</button>
+            <button type="submit">保存并退出</button>
+            <!-- 红色退出按钮 -->
+            <button type="button" onclick="window.close()" style="background-color: #d9534f;">直接退出</button>
+        </form>
+    </div>
+    <script>
+        function SetSettingStatus(){
+            SettingStatus = utools.db.get('SettingStatus');
+            if (!SettingStatus) {
+                utools.db.put({ _id: 'SettingStatus', value: true }); 
+            }
+            else {
+                rev = SettingStatus._rev;
+                utools.db.put({ _id: 'SettingStatus', _rev: rev, value: true });
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            window.loadConfig();
+            document.getElementById('userName').value = CONFIG.USER_NAME;
+            const apiConfigDiv = document.getElementById('apiConfig');
+            apiConfigDiv.innerHTML = '';
+            for (const service in CONFIG.API_CONFIG) {
+                addServiceToForm(service, CONFIG.API_CONFIG[service]);
+            }
+        });
+        
+        function addServiceToForm(serviceName, serviceConfig) {
+            const apiConfigDiv = document.getElementById('apiConfig');
+            const serviceDiv = document.createElement('div');
+            serviceDiv.className = 'service';
+            serviceDiv.id = `service_${serviceName}`;
+        
+            serviceDiv.innerHTML = `
+                <h3>${serviceName}</h3>
+                <div class="form-group">
+                    <label for="${serviceName}_baseUrl">Base URL:</label>
+                    <input type="text" id="${serviceName}_baseUrl" name="${serviceName}_baseUrl" value="${serviceConfig.baseUrl}">
+                </div>
+                <div class="form-group">
+                    <label for="${serviceName}_apiKey">API密钥:</label>
+                    <input type="text" id="${serviceName}_apiKey" name="${serviceName}_apiKey" value="${serviceConfig.apiKey}">
+                </div>
+                <div class="form-group">
+                    <label for="${serviceName}_defaultModel">默认模型(为空则默认选择获取到的首个模型):</label>
+                    <input type="text" id="${serviceName}_defaultModel" name="${serviceName}_defaultModel" value="${serviceConfig.defaultModel}">
+                </div>
+                <button type="button" onclick="removeService('${serviceName}')">删除${serviceName}</button>
+            `;
+            apiConfigDiv.appendChild(serviceDiv);
+        }
+
+        function removeService(serviceName) {
+            const serviceDiv = document.getElementById(`service_${serviceName}`);
+            if (serviceDiv) {
+                serviceDiv.parentNode.removeChild(serviceDiv);
+            }
+            delete CONFIG.API_CONFIG[serviceName];
+        }
+
+        function addNewService() {
+            const newServiceName = `service${Object.keys(CONFIG.API_CONFIG).length + 1}`;
+            CONFIG.API_CONFIG[newServiceName] = {
+                baseUrl: '',
+                apiKey: '',
+                defaultModel: ''
+            };
+            addServiceToForm(newServiceName, CONFIG.API_CONFIG[newServiceName]);
+        }
+
+        function saveSettings() {
+            CONFIG.USER_NAME = document.getElementById('userName').value;
+            for (const service in CONFIG.API_CONFIG) {
+                CONFIG.API_CONFIG[service].baseUrl = document.getElementById(`${service}_baseUrl`).value;
+                CONFIG.API_CONFIG[service].apiKey = document.getElementById(`${service}_apiKey`).value;
+                CONFIG.API_CONFIG[service].defaultModel = document.getElementById(`${service}_defaultModel`).value;
+            }
+            if (window.saveConfig(CONFIG)) {
+                SetSettingStatus();
+                window.close();
+            } else {
+                alert('Failed to save settings!');
+            }
+        }
+
+        document.getElementById('settingsForm').addEventListener('submit', function(event) {
+            saveSettings();
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                window.close();
+            }
+        });
+    </script>
+</body>
+</html>

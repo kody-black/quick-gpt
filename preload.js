@@ -1,10 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const CONFIG_TEMPLATE_PATH = path.join(__dirname, 'config.template.js');
+const CONFIG_TEMPLATE_PATH = path.join(__dirname, 'config.template.json');
 // 将配置文件放在用户数据目录下
 userDataPath = utools.getPath('userData');
-const CONFIG_PATH = path.join(userDataPath, 'quickgpt_config.js');
+const CONFIG_PATH = path.join(userDataPath, 'quickgpt_config.json');
 
 // 检查如果没有配置文件则创建一个
 if (!fs.existsSync(CONFIG_PATH)) {
@@ -21,7 +21,7 @@ utools.onPluginEnter(({ code }) => {
         utools.outPlugin();
     }
     else if (global.CONFIG === undefined) {
-        global.CONFIG = require(CONFIG_PATH);
+        global.CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
         global.API_CONFIG = CONFIG.API_CONFIG;
         global.USER_NAME = CONFIG.USER_NAME;
     }
@@ -29,9 +29,33 @@ utools.onPluginEnter(({ code }) => {
 
 // 加载配置文件
 window.loadConfig = function () {
-    // 清除模块缓存
-    delete require.cache[require.resolve(CONFIG_PATH)];
-    global.CONFIG = require(CONFIG_PATH);
+    global.CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
     global.API_CONFIG = CONFIG.API_CONFIG;
     global.USER_NAME = CONFIG.USER_NAME;
+}
+
+// 保存配置文件
+window.saveConfig = function (config) {
+    try {
+        fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 4));
+        utools.showNotification('配置文件已保存');
+        return true;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}
+
+// 打开设置界面
+window.openSetting = function () {
+    const ubWindow = utools.createBrowserWindow('setting.html', {
+        title: 'QuickGPT 配置',
+        webPreferences: {
+            preload: 'preload.js'
+        }
+    }, () => {
+        ubWindow.setFullScreen(true)
+        console.log('Setting window opened');
+    });
+
 }

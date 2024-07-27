@@ -32,7 +32,7 @@
             <select id="api-key" title="选择API Key" hidden></select>
             <select id="model-select" title="选择模型"></select>
             <button onclick="refreshModels()">新会话</button>
-            <button style="width: 20%;" onclick="reset()">重置</button>
+            <button style="width: 20%;" onclick="window.openSetting()">设置</button>
         </div>
         <div id="output"></div>
         <div class="bottom-row">
@@ -62,6 +62,20 @@
                 refreshModels();
             }
         });
+
+        function checkConfigUpdate() {
+            const configUpdated = utools.db.get('SettingStatus');
+            if (configUpdated && configUpdated.value) {
+                reset();
+                // 重置标志
+                utools.db.put({ _id: 'SettingStatus', _rev: configUpdated._rev, value: false });
+                console.log(configUpdated._rev, configUpdated.value);
+            }
+        }
+        
+        // 使用定时器定期检查
+        setInterval(checkConfigUpdate, 1000);  // 每秒检查一次
+        
 
     </script>
 </body>

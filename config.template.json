@@ -1,0 +1,15 @@
+{
+    "USER_NAME": "Kody",
+    "API_CONFIG": {
+        "service1": {
+            "baseUrl": "https://api.siliconflow.cn/v1",
+            "apiKey": "sk-xiworwzpxjdqtjpbkympjejoqtjtpgfnkmazxuegdydwddpf",
+            "defaultModel": "Qwen/Qwen2-72B-Instruct"
+        },
+        "service2": {
+            "baseUrl": "https://api.deepseek.com",
+            "apiKey": "sk-**********************************************",
+            "defaultModel": "deepseek-coder"
+        }
+    }
+}
