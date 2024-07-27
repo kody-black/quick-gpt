@@ -11,19 +11,15 @@ if (!fs.existsSync(CONFIG_PATH)) {
     console.log('Creating config.json from template...');
     fs.copyFileSync(CONFIG_TEMPLATE_PATH, CONFIG_PATH);
     // 打开配置文件
-    utools.showNotification('请使用文本编辑器打开配置文件，修改完成保存后点击重置');
-    utools.shellOpenPath(CONFIG_PATH);
+    window.openSetting();
 }
 
 utools.onPluginEnter(({ code }) => {
     if (code === 'gptconfig') {
-        utools.shellOpenPath(CONFIG_PATH);
-        utools.outPlugin();
+        window.openSetting();
     }
     else if (global.CONFIG === undefined) {
-        global.CONFIG = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-        global.API_CONFIG = CONFIG.API_CONFIG;
-        global.USER_NAME = CONFIG.USER_NAME;
+        window.loadConfig();
     }
 });
 
@@ -41,7 +37,7 @@ window.saveConfig = function (config) {
         utools.showNotification('配置文件已保存');
         return true;
     } catch (error) {
-        console.error(error);
+        utools.showNotification('配置文件保存失败');
         return false;
     }
 }

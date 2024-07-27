@@ -156,10 +156,8 @@
             }
             if (window.saveConfig(CONFIG)) {
                 SetSettingStatus();
-                window.close();
-            } else {
-                alert('Failed to save settings!');
             }
+            window.close();
         }
 
         document.getElementById('settingsForm').addEventListener('submit', function(event) {
