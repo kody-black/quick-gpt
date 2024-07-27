@@ -1,0 +1,30 @@
+{
+    "pluginName": "Quick GPT",
+    "description": "一个GPT WEB工具",
+    "version": "0.1.0",
+    "author": "kody",
+    "logo": "logo.png",
+    "main": "index.html",
+    "features": [
+        {
+            "code": "quickgpt",
+            "explain": "你的便捷AI助手",
+            "cmds": [
+                "gpt",
+                "quickgpt",
+                "ai",
+                "?"
+            ]
+        },
+        {
+            "code": "gptconfig",
+            "explain": "打开Quick GPT的配置文件",
+            "cmds": [
+                "gptconfig",
+                "configgpt",
+                "设置gpt"
+            ]
+        }
+    ],
+    "preload": "preload.js"
+}
