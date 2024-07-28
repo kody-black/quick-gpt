@@ -116,48 +116,43 @@ async function askGPT() {
         })
     };
 
-    try {
-        const response = await fetch(`${baseUrl}/chat/completions`, options);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-        const body = response.body;
-        const reader = body.getReader();
-        isStreaming = true;
-        document.getElementById('action-button').innerText = '停止';
-
-        return new ReadableStream({
-            start(controller) {
-                function push() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) {
-                            controller.close();
+    fetch(`${baseUrl}/chat/completions`, options)
+        .then(response => response.body)
+        .then(body => {
+            reader = body.getReader();
+            isStreaming = true;
+            document.getElementById('action-button').innerText = '停止';
+            return new ReadableStream({
+                start(controller) {
+                    function push() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                controller.close();
+                                isStreaming = false;
+                                document.getElementById('action-button').innerText = '确定';
+                                return;
+                            }
+                            const textDecoder = new TextDecoder();
+                            const chunk = textDecoder.decode(value);
+                            handleStreamedResponse(chunk);
+                            push();
+                        }).catch(err => {
+                            console.error('读取失败:', err);
+                            controller.error(err);
                             isStreaming = false;
                             document.getElementById('action-button').innerText = '确定';
-                            return;
-                        }
-                        const textDecoder = new TextDecoder();
-                        const chunk = textDecoder.decode(value);
-                        handleStreamedResponse(chunk);
-                        push();
-                    }).catch(err => {
-                        isStreaming = false;
-                        document.getElementById('action-button').innerText = '确定';
-                        const outputDiv = document.getElementById('output');
-                        outputDiv.innerHTML = '对话请求失败！<br>' + err.message;
-                    });
+                        });
+                    }
+                    push();
                 }
-                push();
-            }
+            });
+        })
+        .catch(err => {
+            console.error('发生错误:', err);
+            isStreaming = false;
+            document.getElementById('action-button').innerText = '确定';
+            alert('发生错误:', err);
         });
-    } catch (err) {
-        isStreaming = false;
-        document.getElementById('action-button').innerText = '确定';
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = '对话请求失败！<br>' + err.message;
-        outputDiv.scrollTop = outputDiv.scrollHeight;
-    }
 }
 
 function handleStreamedResponse(chunk) {
