@@ -17,7 +17,7 @@ window.loadConfig = function () {
 window.saveConfig = function (config) {
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 4));
-        utools.showNotification('配置文件已保存');
+        utools.showNotification('配置文件已保存，点击刷新按钮生效');
         return true;
     } catch (error) {
         utools.showNotification('配置文件保存失败');

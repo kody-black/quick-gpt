@@ -83,17 +83,6 @@
         </form>
     </div>
     <script>
-        function SetSettingStatus(){
-            SettingStatus = utools.db.get('SettingStatus');
-            if (!SettingStatus) {
-                utools.db.put({ _id: 'SettingStatus', value: true }); 
-            }
-            else {
-                rev = SettingStatus._rev;
-                utools.db.put({ _id: 'SettingStatus', _rev: rev, value: true });
-            }
-        }
-
         window.addEventListener('DOMContentLoaded', () => {
             window.loadConfig();
             document.getElementById('userName').value = CONFIG.USER_NAME;
@@ -154,9 +143,7 @@
                 CONFIG.API_CONFIG[service].apiKey = document.getElementById(`${service}_apiKey`).value;
                 CONFIG.API_CONFIG[service].defaultModel = document.getElementById(`${service}_defaultModel`).value;
             }
-            if (window.saveConfig(CONFIG)) {
-                SetSettingStatus();
-            }
+            window.saveConfig(CONFIG);
             window.close();
         }
 
