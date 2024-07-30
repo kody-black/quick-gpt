@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="./static/css/roboto_font.css">
     <link rel="stylesheet" href="./static/css/atom-one-dark.min.css">
     <link rel="stylesheet" href="./static/css/main.css">
-    <script src="./static/js/highlight.min.js"></script> 
+    <script src="./static/js/highlight.min.js"></script>
     <script src="./static/js/powershell.min.js"></script>
     <script src="./static/js/latex.min.js"></script>
     <script src="./static/js/marked.min.js"></script>
@@ -33,7 +33,7 @@
             <select id="model-select" title="选择模型"></select>
             <button onclick="refreshModels()">新会话</button>
             <button style="width: 10%;" onclick="window.openSetting()">设置</button>
-            <button style="width: 10%"" onclick="reset()">刷新</button>
+            <button style="width: 10%;" onclick=" reset()">刷新</button>
         </div>
         <div id="output"></div>
         <div class="bottom-row">
@@ -56,13 +56,26 @@
             }
         });
 
+
+        document.getElementById('question').addEventListener('input', function () {
+            const actionButton = document.getElementById('action-button');
+            if (isPausing) {
+                if (document.getElementById('question').value === '') {
+                    actionButton.innerText = '继续';
+                } else {
+                    actionButton.innerText = '确定';
+                }
+            }
+        });
+
+
         // 绑定F5刷新页面事件
         document.addEventListener('keydown', function (event) {
             if (event.key === 'F5') {
                 event.preventDefault();
                 refreshModels();
             }
-        });    
+        });
 
     </script>
 </body>

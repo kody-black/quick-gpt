@@ -3,10 +3,11 @@ let selectedModel = '';
 let currentAssistantResponse = '';
 let assistantDiv;
 let reader;
-let isStreaming = false;
-let isPausing = false;
+let isStreaming = false; // 是否正在流式传输
+let onPause = false;  // 是否处于暂停状态
 
 function populateSelects() {
+    console.log('populateSelects');
     const baseUrlSelect = document.getElementById('base-url');
     const apiKeySelect = document.getElementById('api-key');
     const modelSelect = document.getElementById('model-select');
@@ -50,6 +51,7 @@ function populateSelects() {
 }
 
 async function loadModels() {
+    console.log('loadModels');
     const baseUrl = document.getElementById('base-url').value;
     const apiKey = document.getElementById('api-key').value;
     const options = {
@@ -91,25 +93,31 @@ async function loadModels() {
     }
 }
 
-function waitForCondition(callback) {
-    if (isPausing && reader) {
-        setTimeout(() => {
-            waitForCondition(callback);
-        }, 500); // 每隔0.5秒检查一次条件
-    } else {
-        callback(); // 条件满足后执行回调函数
-    }
-}
-
-async function askGPT() {
+function askGPT(continueSession = false) {
     const question = document.getElementById('question').value;
-    if (!question.trim()) {
+    const actionButton = document.getElementById('action-button');
+
+    if (!question.trim() && !continueSession) {
         return;
     }
-    conversationHistory.push({
-        role: 'user',
-        content: question
-    });
+
+    if (!continueSession) {
+        conversationHistory.push({
+            role: 'user',
+            content: question
+        });
+        outMessages = conversationHistory;
+        isPausing = false;
+    }
+    else {
+        // outMessages = conversationHistory;
+        // 这里的outMessages不能直接使用conversationHistory，因为后续会修改conversationHistory
+        outMessages = conversationHistory.slice();
+        outMessages.push({
+            role: 'user',
+            content: 'continue'
+        });
+    }
 
     const baseUrl = document.getElementById('base-url').value;
     const apiKey = document.getElementById('api-key').value;
@@ -122,7 +130,7 @@ async function askGPT() {
         },
         body: JSON.stringify({
             model: selectedModel,
-            messages: conversationHistory,
+            messages: outMessages,
             stream: true
         })
     };
@@ -132,28 +140,34 @@ async function askGPT() {
         .then(body => {
             reader = body.getReader();
             isStreaming = true;
+            actionButton.innerText = '停止';
             return new ReadableStream({
                 start(controller) {
                     function push() {
-                        waitForCondition(() => {
-                            document.getElementById('action-button').innerText = '暂停';
-                            reader.read().then(({ done, value }) => {
-                                if (done) {
-                                    controller.close();
-                                    isStreaming = false;
-                                    document.getElementById('action-button').innerText = '确定';
-                                    return;
-                                }
-                                const textDecoder = new TextDecoder();
-                                const chunk = textDecoder.decode(value);
-                                handleStreamedResponse(chunk);
-                                push();
-                            }).catch(err => {
-                                console.error('读取失败:', err);
-                                controller.error(err);
+                        reader.read().then(({ done, value }) => {
+                            console.log('done:', done, 'value:', value);
+                            if (done) {
+                                controller.close();
                                 isStreaming = false;
-                                document.getElementById('action-button').innerText = '确定';
-                            });
+                                // 检查是否处于暂停状态
+                                if (isPausing) {
+                                    actionButton.innerText = '继续';
+                                } else {
+                                    actionButton.innerText = '确定';
+                                }
+                                isPausing = false;
+                                console.log('流式传输已完成');
+                                return;
+                            }
+                            const textDecoder = new TextDecoder();
+                            const chunk = textDecoder.decode(value);
+                            handleStreamedResponse(chunk, continueSession = continueSession);
+                            push();
+                        }).catch(err => {
+                            console.error('读取失败:', err);
+                            controller.error(err);
+                            isStreaming = false;
+                            actionButton.innerText = '确定';
                         });
                     }
                     push();
@@ -163,21 +177,27 @@ async function askGPT() {
         .catch(err => {
             console.error('发生错误:', err);
             isStreaming = false;
-            document.getElementById('action-button').innerText = '确定';
+            actionButton.innerText = '确定';
             alert('发生错误:', err);
         });
 }
 
-function handleStreamedResponse(chunk) {
+function handleStreamedResponse(chunk, continueSession = false) {
+    console.log('handleStreamedResponse');
     const lines = chunk.split('\n').filter(line => line.trim() !== '');
     const model_name = document.getElementById('model-select').value;
     lines.forEach(line => {
         const message = line.replace(/^data: /, '');
         if (message === '[DONE]') {
-            conversationHistory.push({
-                role: 'assistant',
-                content: currentAssistantResponse
-            });
+            // 如果continueSession是true，则应该将获取的内容添加到在conversationHistory的最后一条消息中的content后面
+            if (continueSession) {
+                conversationHistory[conversationHistory.length - 1].content += currentAssistantResponse;
+            } else {
+                conversationHistory.push({
+                    role: 'assistant',
+                    content: currentAssistantResponse
+                });
+            }
             currentAssistantResponse = '';
             assistantDiv = null; // Reset assistantDiv after done
             displayConversationHistory();
@@ -204,6 +224,7 @@ function handleStreamedResponse(chunk) {
 }
 
 function displayConversationHistory() {
+    console.log('displayConversationHistory');
     const outputDiv = document.getElementById('output');
     const model_name = document.getElementById('model-select').value;
     outputDiv.innerHTML = '';
@@ -217,12 +238,13 @@ function displayConversationHistory() {
         }
         outputDiv.appendChild(entryDiv);
     });
-    // document.getElementById('question').value = '';
+    document.getElementById('question').value = '';
     MathJax.typesetPromise();
     hljs.highlightAll(); // 添加这一行来高亮代码
 }
 
 function addCopyButtons(container) {
+    console.log('addCopyButtons');
     container.querySelectorAll('pre code').forEach((codeBlock) => {
         const button = document.createElement('button');
         button.className = 'copy-btn';
@@ -247,60 +269,60 @@ function addCopyButtons(container) {
 }
 
 function refreshModels() {
+    console.log('refreshModels');
     // 清空对话历史
     conversationHistory = [];
     currentAssistantResponse = '';
     assistantDiv = null;
     document.getElementById('output').innerHTML = '';
+    document.getElementById('action-button').innerText = '确定';
     loadModels();
 }
 
 
 function reset() {
+    console.log('reset');
     window.loadConfig();
     populateSelects();
     refreshModels();
 }
 
 function stopStream() {
+    console.log('stopStream');
     if (reader) {
         reader.cancel();
         isStreaming = false;
-        isPausing = false;
-        document.getElementById('action-button').innerText = '确定';
-        conversationHistory.push({
-            role: 'assistant',
-            content: currentAssistantResponse
-        });
-        displayConversationHistory();
-        currentAssistantResponse = '';
-        assistantDiv = null;
-    }
-}
-
-function pauseStream() {
-    if (reader) {
+        const actionButton = document.getElementById('action-button');
+        actionButton.innerText = '继续';
+        console.log('当前状态:', isPausing);
+        if (isPausing) {
+            //  如果处于暂停状态，则将当前assistantResponse添加到conversationHistory的最后一条消息中的content后面
+            lastAssistantResponse = conversationHistory[conversationHistory.length - 1].content;
+            conversationHistory[conversationHistory.length - 1].content += currentAssistantResponse;
+            displayConversationHistory();
+            // 显示后重新使得conversationHistory的最后一条消息恢复到添加assistantResponse之前的状态
+            conversationHistory[conversationHistory.length - 1].content = lastAssistantResponse;
+        }
+        else {
+            conversationHistory.push({
+                role: 'assistant',
+                content: currentAssistantResponse
+            });
+            displayConversationHistory();
+            currentAssistantResponse = '';
+            assistantDiv = null;
+        }
         isPausing = true;
-        document.getElementById('action-button').innerText = '继续';
-    }
-}
-
-function resumeStream() {
-    if (reader) {
-        isPausing = false;
-        document.getElementById('action-button').innerText = '暂停';
-        handleStreamedResponse();
     }
 }
 
 function handleAction() {
     const actionButton = document.getElementById('action-button');
-    if (actionButton.innerText === '暂停') {
-        pauseStream();
-    } else if (actionButton.innerText === '继续') {
-        resumeStream();
-    } else if (actionButton.innerText === '确定') {
+    if (actionButton.innerText === '停止') {
         stopStream();
+    } else if (actionButton.innerText === '继续') {
+        askGPT(true); // 继续当前对话
+    } else {
         askGPT();
     }
 }
