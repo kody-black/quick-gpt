@@ -171,6 +171,7 @@ async function askGPT() {
 function handleStreamedResponse(chunk) {
     const lines = chunk.split('\n').filter(line => line.trim() !== '');
     const model_name = document.getElementById('model-select').value;
+    const outputDiv = document.getElementById('output');
     lines.forEach(line => {
         const message = line.replace(/^data: /, '');
         if (message === '[DONE]') {
@@ -180,7 +181,6 @@ function handleStreamedResponse(chunk) {
             });
             currentAssistantResponse = '';
             assistantDiv = null; // Reset assistantDiv after done
-            displayConversationHistory();
         } else {
             try {
                 const response = JSON.parse(message);
@@ -188,42 +188,28 @@ function handleStreamedResponse(chunk) {
                     const content = response.choices[0].delta.content;
                     currentAssistantResponse += content;
                     if (!assistantDiv) {
+                        const question = document.getElementById('question')
+                        userDiv = document.createElement('div');
+                        userDiv.innerHTML = `<strong>${USER_NAME}:</strong>${question.value}<br>`;
+                        outputDiv.appendChild(userDiv);
                         assistantDiv = document.createElement('div');
-                        assistantDiv.innerHTML = `<strong>${model_name}:</strong>`;
-                        document.getElementById('output').appendChild(assistantDiv);
+                        outputDiv.appendChild(assistantDiv);
+                        question.value = ''; // 清空问题输入框
                     }
-                    assistantDiv.innerHTML += content.replace(/\n/g, '<br>'); // 将换行替换为<br>
+                    assistantDiv.innerHTML = `<strong>${model_name}:</strong> ${marked.parse(currentAssistantResponse)}`;
+                    addCopyButtons(assistantDiv);
                 }
             } catch (err) {
                 console.error('数据流处理失败:\n', err);
             }
         }
     });
-    const outputDiv = document.getElementById('output');
     outputDiv.scrollTop = outputDiv.scrollHeight;
-}
-
-function displayConversationHistory() {
-    const outputDiv = document.getElementById('output');
-    const model_name = document.getElementById('model-select').value;
-    outputDiv.innerHTML = '';
-    conversationHistory.forEach(entry => {
-        const entryDiv = document.createElement('div');
-        if (entry.role === 'user') {
-            entryDiv.innerHTML = `<strong>${USER_NAME}:</strong> ${entry.content}`;
-        } else {
-            entryDiv.innerHTML = `<strong>${model_name}:</strong> ${marked.parse(entry.content)}`;
-            addCopyButtons(entryDiv); // 添加复制按钮
-        }
-        outputDiv.appendChild(entryDiv);
-    });
-    // document.getElementById('question').value = '';
-    MathJax.typesetPromise();
-    hljs.highlightAll(); // 添加这一行来高亮代码
 }
 
 function addCopyButtons(container) {
     container.querySelectorAll('pre code').forEach((codeBlock) => {
+        hljs.highlightElement(codeBlock);
         const button = document.createElement('button');
         button.className = 'copy-btn';
         button.innerText = '复制';
@@ -245,6 +231,7 @@ function addCopyButtons(container) {
         }, 2000);
     });
 }
+
 
 function refreshModels() {
     // 清空对话历史
@@ -272,7 +259,6 @@ function stopStream() {
             role: 'assistant',
             content: currentAssistantResponse
         });
-        displayConversationHistory();
         currentAssistantResponse = '';
         assistantDiv = null;
     }
