@@ -33,7 +33,6 @@ window.openSetting = function () {
             preload: 'preload.js'
         }
     }, () => {
-        ubWindow.setFullScreen(true)
         console.log('Setting window opened');
     });
 
