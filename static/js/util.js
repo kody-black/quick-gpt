@@ -141,7 +141,7 @@ async function askGPT() {
                                 if (done) {
                                     controller.close();
                                     isStreaming = false;
-                                    document.getElementById('action-button').innerText = '确定';
+                                    document.getElementById('action-button').innerText = '发送';
                                     return;
                                 }
                                 const textDecoder = new TextDecoder();
@@ -152,7 +152,7 @@ async function askGPT() {
                                 console.error('读取失败:', err);
                                 controller.error(err);
                                 isStreaming = false;
-                                document.getElementById('action-button').innerText = '确定';
+                                document.getElementById('action-button').innerText = '发送';
                             });
                         });
                     }
@@ -163,7 +163,7 @@ async function askGPT() {
         .catch(err => {
             console.error('发生错误:', err);
             isStreaming = false;
-            document.getElementById('action-button').innerText = '确定';
+            document.getElementById('action-button').innerText = '发送';
             alert('发生错误:', err);
         });
 }
@@ -263,7 +263,7 @@ function stopStream() {
         reader.cancel();
         isStreaming = false;
         isPausing = false;
-        document.getElementById('action-button').innerText = '确定';
+        document.getElementById('action-button').innerText = '发送';
         conversationHistory.push({
             role: 'assistant',
             content: currentAssistantResponse
@@ -293,7 +293,7 @@ function handleAction() {
         pauseStream();
     } else if (actionButton.innerText === '继续') {
         resumeStream();
-    } else if (actionButton.innerText === '确定') {
+    } else if (actionButton.innerText === '发送') {
         stopStream();
         askGPT();
     }

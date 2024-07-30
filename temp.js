@@ -153,7 +153,7 @@ function askGPT(continueSession = false) {
                                 if (isPausing) {
                                     actionButton.innerText = '继续';
                                 } else {
-                                    actionButton.innerText = '确定';
+                                    actionButton.innerText = '发送';
                                 }
                                 isPausing = false;
                                 console.log('流式传输已完成');
@@ -167,7 +167,7 @@ function askGPT(continueSession = false) {
                             console.error('读取失败:', err);
                             controller.error(err);
                             isStreaming = false;
-                            actionButton.innerText = '确定';
+                            actionButton.innerText = '发送';
                         });
                     }
                     push();
@@ -177,7 +177,7 @@ function askGPT(continueSession = false) {
         .catch(err => {
             console.error('发生错误:', err);
             isStreaming = false;
-            actionButton.innerText = '确定';
+            actionButton.innerText = '发送';
             alert('发生错误:', err);
         });
 }
@@ -275,7 +275,7 @@ function refreshModels() {
     currentAssistantResponse = '';
     assistantDiv = null;
     document.getElementById('output').innerHTML = '';
-    document.getElementById('action-button').innerText = '确定';
+    document.getElementById('action-button').innerText = '发送';
     loadModels();
 }
 

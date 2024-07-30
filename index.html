@@ -38,7 +38,7 @@
         <div id="output"></div>
         <div class="bottom-row">
             <textarea id="question" placeholder="请输入问题, Enter发送, Ctrl+Enter换行"></textarea>
-            <button id="action-button" style="width: 20%;" onclick="handleAction()">确定</button>
+            <button id="action-button" style="width: 20%;" onclick="handleAction()">发送</button>
         </div>
     </div>
 
@@ -63,7 +63,7 @@
                 if (document.getElementById('question').value === '') {
                     actionButton.innerText = '继续';
                 } else {
-                    actionButton.innerText = '确定';
+                    actionButton.innerText = '发送';
                 }
             }
         });
