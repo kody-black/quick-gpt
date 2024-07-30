@@ -188,13 +188,19 @@ function handleStreamedResponse(chunk) {
                     const content = response.choices[0].delta.content;
                     currentAssistantResponse += content;
                     if (!assistantDiv) {
-                        const question = document.getElementById('question')
-                        userDiv = document.createElement('div');
-                        userDiv.innerText = `${USER_NAME}: ${question.value}\n\n`;
-                        outputDiv.appendChild(userDiv);
+                        const question = document.getElementById('question').value;
+                        const conversationDiv = document.createElement('div');
+                        conversationDiv.className = 'conversation';
+
+                        const userDiv = document.createElement('div');
+                        userDiv.innerText = `${USER_NAME}: ${question}\n\n`;
+                        conversationDiv.appendChild(userDiv);
+
                         assistantDiv = document.createElement('div');
-                        outputDiv.appendChild(assistantDiv);
-                        question.value = ''; // 清空问题输入框
+                        conversationDiv.appendChild(assistantDiv);
+
+                        outputDiv.appendChild(conversationDiv);
+                        document.getElementById('question').value = ''; // 清空问题输入框
                     }
                     assistantDiv.innerHTML = `${model_name}: ${marked.parse(currentAssistantResponse)}`;
                     addCopyButtons(assistantDiv);
