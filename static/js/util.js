@@ -84,9 +84,9 @@ async function loadModels() {
         // 将光标移动到问题输入框
         document.getElementById('question').focus();
     } catch (err) {
-        console.error('加载模型失败, 请检查网络或配置文件 ', err);
+        console.error('加载模型失败, 请检查网络或修改设置 ', err);
         const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = '加载模型失败, 请检查网络或配置文件(utools中搜索gptconfig打开)<br>' + err;
+        outputDiv.innerHTML = '加载模型失败, 请检查网络或修改设置<br>' + err;
         outputDiv.scrollTop = outputDiv.scrollHeight;
     }
 }
@@ -190,13 +190,13 @@ function handleStreamedResponse(chunk) {
                     if (!assistantDiv) {
                         const question = document.getElementById('question')
                         userDiv = document.createElement('div');
-                        userDiv.innerHTML = `<strong>${USER_NAME}:</strong>${question.value}<br>`;
+                        userDiv.innerText = `${USER_NAME}: ${question.value}\n\n`;
                         outputDiv.appendChild(userDiv);
                         assistantDiv = document.createElement('div');
                         outputDiv.appendChild(assistantDiv);
                         question.value = ''; // 清空问题输入框
                     }
-                    assistantDiv.innerHTML = `<strong>${model_name}:</strong> ${marked.parse(currentAssistantResponse)}`;
+                    assistantDiv.innerHTML = `${model_name}: ${marked.parse(currentAssistantResponse)}`;
                     addCopyButtons(assistantDiv);
                 }
             } catch (err) {
@@ -235,6 +235,9 @@ function addCopyButtons(container) {
 
 function refreshModels() {
     // 清空对话历史
+    if (isStreaming) {
+        stopStream();
+    }
     conversationHistory = [];
     currentAssistantResponse = '';
     assistantDiv = null;
@@ -275,7 +278,6 @@ function resumeStream() {
     if (reader) {
         isPausing = false;
         document.getElementById('action-button').innerText = '暂停';
-        handleStreamedResponse();
     }
 }
 
