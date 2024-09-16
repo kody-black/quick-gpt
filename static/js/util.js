@@ -101,7 +101,7 @@ function waitForCondition(callback) {
     }
 }
 
-async function askGPT() {
+function askGPT() {
     const question = document.getElementById('question').value;
     if (!question.trim()) {
         return;
@@ -179,6 +179,7 @@ function handleStreamedResponse(chunk) {
                 role: 'assistant',
                 content: currentAssistantResponse
             });
+            addCopyButtons(assistantDiv, currentAssistantResponse);
             currentAssistantResponse = '';
             assistantDiv = null; // Reset assistantDiv after done
         } else {
@@ -203,7 +204,9 @@ function handleStreamedResponse(chunk) {
                         document.getElementById('question').value = ''; // 清空问题输入框
                     }
                     assistantDiv.innerHTML = `${model_name}: ${marked.parse(currentAssistantResponse)}`;
-                    addCopyButtons(assistantDiv);
+                    assistantDiv.querySelectorAll('pre code').forEach((codeBlock) => {
+                        hljs.highlightElement(codeBlock);
+                    });
                 }
             } catch (err) {
                 console.error('数据流处理失败:\n', err);
@@ -213,27 +216,25 @@ function handleStreamedResponse(chunk) {
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
-function addCopyButtons(container) {
-    container.querySelectorAll('pre code').forEach((codeBlock) => {
-        hljs.highlightElement(codeBlock);
-        const button = document.createElement('button');
-        button.className = 'copy-btn';
-        button.innerText = '复制';
-        button.setAttribute('data-clipboard-text', codeBlock.innerText);
-        codeBlock.parentNode.insertBefore(button, codeBlock); // 将按钮插入到 codeBlock 的父节点中，位于 codeBlock 前面
-    });
+
+function addCopyButtons(container, content) {
+    const button = document.createElement('button');
+    button.className = 'copy-btn';
+    button.innerText = '复制回答';
+    button.setAttribute('data-clipboard-text', content);
+    container.appendChild(button); 
 
     const clipboard = new ClipboardJS('.copy-btn');
     clipboard.on('success', function (e) {
         e.trigger.innerText = '复制成功';
         setTimeout(() => {
-            e.trigger.innerText = '复制';
+            e.trigger.innerText = '复制回答';
         }, 2000);
     });
     clipboard.on('error', function (e) {
         e.trigger.innerText = '复制失败';
         setTimeout(() => {
-            e.trigger.innerText = '复制';
+            e.trigger.innerText = '复制回答';
         }, 2000);
     });
 }
@@ -277,6 +278,11 @@ function pauseStream() {
     if (reader) {
         isPausing = true;
         document.getElementById('action-button').innerText = '继续';
+        
+        // 延迟添加复制按钮
+        setTimeout(() => {
+            addCopyButtons(assistantDiv, currentAssistantResponse);
+        }, 500);
     }
 }
 
