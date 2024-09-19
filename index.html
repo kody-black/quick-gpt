@@ -31,7 +31,7 @@
             <select id="base-url" title="选择Base URL"></select>
             <select id="api-key" title="选择API Key" hidden></select>
             <select id="model-select" title="选择模型"></select>
-            <button onclick="refreshModels()">新会话</button>
+            <button onclick="newChat()">新会话</button>
             <button style="width: 10%;" onclick="window.openSetting()">设置</button>
             <button style="width: 10%;" onclick=" reset()">刷新</button>
         </div>
@@ -46,7 +46,7 @@
         window.loadConfig();
         document.addEventListener('DOMContentLoaded', () => {
             populateSelects();
-            refreshModels();
+            newChat();
         });
 
         document.getElementById('question').addEventListener('keydown', function (event) {
@@ -73,7 +73,7 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'F5') {
                 event.preventDefault();
-                refreshModels();
+                newChat();
             }
         });
 

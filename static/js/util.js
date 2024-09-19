@@ -165,7 +165,11 @@ function handleFetchError(err) {
     document.getElementById('action-button').innerText = '发送';
     
     const outputDiv = document.getElementById('output');
-    outputDiv.innerHTML = `发生错误: ${err}`;
+    // 创建一个div元素，属于error类
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'error';
+    errorDiv.innerText = `发生错误: ${err}`;
+    outputDiv.appendChild(errorDiv);
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
@@ -248,21 +252,29 @@ function updateButtonText(button, text) {
     }, 2000);
 }
 
+function newChat() {
+    conversationHistory = [];
+    document.getElementById('output').innerHTML = '';
+    document.getElementById('question').focus();
+    refreshModels();
+}
+
 function refreshModels() {
     if (isStreaming) {
         stopStream();
     }
-    conversationHistory = [];
-    currentAssistantResponse = '';
-    assistantDiv = null;
-    document.getElementById('output').innerHTML = '';
+    
+    // 删除掉outputDiv中的所有errorDiv
+    const outputDiv = document.getElementById('output');
+    const errorDivs = outputDiv.querySelectorAll('.error');
+    errorDivs.forEach(div => outputDiv.removeChild(div));
     loadModels();
 }
 
 function reset() {
     window.loadConfig();
     populateSelects();
-    refreshModels();
+    newChat();
 }
 
 function stopStream() {
