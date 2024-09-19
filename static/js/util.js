@@ -9,44 +9,39 @@ let isPausing = false;
 function populateSelects() {
     const baseUrlSelect = document.getElementById('base-url');
     const apiKeySelect = document.getElementById('api-key');
-    const modelSelect = document.getElementById('model-select');
 
-    // Clear existing options
     baseUrlSelect.innerHTML = '';
     apiKeySelect.innerHTML = '';
 
-    // Populate selects
-    for (const key in API_CONFIG) {
-        const service = API_CONFIG[key];
-        const option1 = document.createElement('option');
-        option1.value = service.baseUrl;
-        option1.text = service.baseUrl;
-        baseUrlSelect.appendChild(option1);
+    Object.entries(API_CONFIG).forEach(([key, service]) => {
+        baseUrlSelect.appendChild(createOption(service.baseUrl, service.baseUrl));
+        apiKeySelect.appendChild(createOption(service.apiKey, key));
+    });
 
-        const option2 = document.createElement('option');
-        option2.value = service.apiKey;
-        option2.text = key;
-        apiKeySelect.appendChild(option2);
-    }
-
-    // Set default values
-    const defaultServiceKey = Object.keys(API_CONFIG)[0];
+    const [defaultServiceKey] = Object.keys(API_CONFIG);
     const defaultService = API_CONFIG[defaultServiceKey];
     baseUrlSelect.value = defaultService.baseUrl;
     apiKeySelect.value = defaultService.apiKey;
     selectedModel = defaultService.defaultModel;
 
-    baseUrlSelect.addEventListener('change', function () {
-        const selectedBaseUrl = baseUrlSelect.value;
-        for (const key in API_CONFIG) {
-            if (API_CONFIG[key].baseUrl === selectedBaseUrl) {
-                apiKeySelect.value = API_CONFIG[key].apiKey;
-                selectedModel = API_CONFIG[key].defaultModel;
-                break;
-            }
-        }
-        refreshModels();
-    });
+    baseUrlSelect.addEventListener('change', updateApiKeyAndModel);
+}
+
+function createOption(value, text) {
+    const option = document.createElement('option');
+    option.value = value;
+    option.text = text;
+    return option;
+}
+
+function updateApiKeyAndModel() {
+    const selectedBaseUrl = document.getElementById('base-url').value;
+    const service = Object.values(API_CONFIG).find(s => s.baseUrl === selectedBaseUrl);
+    if (service) {
+        document.getElementById('api-key').value = service.apiKey;
+        selectedModel = service.defaultModel;
+    }
+    refreshModels();
 }
 
 async function loadModels() {
@@ -63,53 +58,51 @@ async function loadModels() {
     try {
         const response = await fetch(`${baseUrl}/models`, options);
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            throw new Error(`HTTP错误! 状态: ${response.status}, 信息: ${await response.text()}`);
         }
         const data = await response.json();
-        const modelSelect = document.getElementById('model-select');
-        modelSelect.innerHTML = ''; // Clear existing options
-        data.data.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.id;
-            option.text = model.id;
-            if (model.id === selectedModel) {
-                option.selected = true;
-            }
-            modelSelect.appendChild(option);
-        });
-        modelSelect.addEventListener('change', (event) => {
-            selectedModel = event.target.value;
-        });
-        // 将光标移动到问题输入框
-        document.getElementById('question').focus();
+        updateModelSelect(data.data);
     } catch (err) {
-        console.error('加载模型失败, 请检查网络或修改设置 ', err);
-        const outputDiv = document.getElementById('output');
-        outputDiv.innerHTML = '加载模型失败, 请检查网络或修改设置<br>' + err;
-        outputDiv.scrollTop = outputDiv.scrollHeight;
+        handleLoadModelError(err);
     }
+}
+
+function updateModelSelect(models) {
+    const modelSelect = document.getElementById('model-select');
+    modelSelect.innerHTML = '';
+    models.forEach(model => {
+        const option = createOption(model.id, model.id);
+        if (model.id === selectedModel) {
+            option.selected = true;
+        }
+        modelSelect.appendChild(option);
+    });
+    modelSelect.addEventListener('change', (event) => {
+        selectedModel = event.target.value;
+    });
+    document.getElementById('question').focus();
+}
+
+function handleLoadModelError(err) {
+    console.error('加载模型失败, 请检查网络或修改设置 ', err);
+    const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = '加载模型失败, 请检查网络或修改设置<br>' + err;
+    outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
 function waitForCondition(callback) {
     if (isPausing && reader) {
-        setTimeout(() => {
-            waitForCondition(callback);
-        }, 500); // 每隔0.5秒检查一次条件
+        setTimeout(() => waitForCondition(callback), 500);
     } else {
-        callback(); // 条件满足后执行回调函数
+        callback();
     }
 }
 
 function askGPT() {
-    const question = document.getElementById('question').value;
-    if (!question.trim()) {
-        return;
-    }
-    conversationHistory.push({
-        role: 'user',
-        content: question
-    });
+    const question = document.getElementById('question').value.trim();
+    if (!question) return;
+
+    conversationHistory.push({ role: 'user', content: question });
 
     const baseUrl = document.getElementById('base-url').value;
     const apiKey = document.getElementById('api-key').value;
@@ -140,73 +133,54 @@ function askGPT() {
                             reader.read().then(({ done, value }) => {
                                 if (done) {
                                     controller.close();
-                                    isStreaming = false;
-                                    document.getElementById('action-button').innerText = '发送';
+                                    finishStreaming();
                                     return;
                                 }
-                                const textDecoder = new TextDecoder();
-                                const chunk = textDecoder.decode(value);
+                                const chunk = new TextDecoder().decode(value);
                                 handleStreamedResponse(chunk);
                                 push();
-                            }).catch(err => {
-                                console.error('读取失败:', err);
-                                controller.error(err);
-                                isStreaming = false;
-                                document.getElementById('action-button').innerText = '发送';
-                            });
+                            }).catch(handleStreamError);
                         });
                     }
                     push();
                 }
             });
         })
-        .catch(err => {
-            console.error('发生错误:', err);
-            isStreaming = false;
-            document.getElementById('action-button').innerText = '发送';
-            alert('发生错误:', err);
-        });
+        .catch(handleFetchError);
+}
+
+function finishStreaming() {
+    isStreaming = false;
+    document.getElementById('action-button').innerText = '发送';
+}
+
+function handleStreamError(err) {
+    console.error('读取失败:', err);
+    isStreaming = false;
+    document.getElementById('action-button').innerText = '发送';
+}
+
+function handleFetchError(err) {
+    console.error('发生错误:', err);
+    isStreaming = false;
+    document.getElementById('action-button').innerText = '发送';
+    alert('发生错误:' + err);
 }
 
 function handleStreamedResponse(chunk) {
     const lines = chunk.split('\n').filter(line => line.trim() !== '');
     const model_name = document.getElementById('model-select').value;
     const outputDiv = document.getElementById('output');
+    
     lines.forEach(line => {
         const message = line.replace(/^data: /, '');
         if (message === '[DONE]') {
-            conversationHistory.push({
-                role: 'assistant',
-                content: currentAssistantResponse
-            });
-            addCopyButtons(assistantDiv, currentAssistantResponse);
-            currentAssistantResponse = '';
-            assistantDiv = null; // Reset assistantDiv after done
+            finishAssistantResponse();
         } else {
             try {
                 const response = JSON.parse(message);
                 if (response.choices && response.choices[0].delta && response.choices[0].delta.content) {
-                    const content = response.choices[0].delta.content;
-                    currentAssistantResponse += content;
-                    if (!assistantDiv) {
-                        const question = document.getElementById('question').value;
-                        const conversationDiv = document.createElement('div');
-                        conversationDiv.className = 'conversation';
-
-                        const userDiv = document.createElement('div');
-                        userDiv.innerText = `${USER_NAME}: ${question}\n\n`;
-                        conversationDiv.appendChild(userDiv);
-
-                        assistantDiv = document.createElement('div');
-                        conversationDiv.appendChild(assistantDiv);
-
-                        outputDiv.appendChild(conversationDiv);
-                        document.getElementById('question').value = ''; // 清空问题输入框
-                    }
-                    assistantDiv.innerHTML = `${model_name}: ${marked.parse(currentAssistantResponse)}`;
-                    assistantDiv.querySelectorAll('pre code').forEach((codeBlock) => {
-                        hljs.highlightElement(codeBlock);
-                    });
+                    updateAssistantResponse(response.choices[0].delta.content, model_name);
                 }
             } catch (err) {
                 console.error('数据流处理失败:\n', err);
@@ -216,6 +190,42 @@ function handleStreamedResponse(chunk) {
     outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
+function finishAssistantResponse() {
+    conversationHistory.push({
+        role: 'assistant',
+        content: currentAssistantResponse
+    });
+    addCopyButtons(assistantDiv, currentAssistantResponse);
+    currentAssistantResponse = '';
+    assistantDiv = null;
+}
+
+function updateAssistantResponse(content, model_name) {
+    currentAssistantResponse += content;
+    if (!assistantDiv) {
+        createNewConversation();
+    }
+    assistantDiv.innerHTML = `${model_name}: ${marked.parse(currentAssistantResponse)}`;
+    assistantDiv.querySelectorAll('pre code').forEach((codeBlock) => {
+        hljs.highlightElement(codeBlock);
+    });
+}
+
+function createNewConversation() {
+    const question = document.getElementById('question').value;
+    const conversationDiv = document.createElement('div');
+    conversationDiv.className = 'conversation';
+
+    const userDiv = document.createElement('div');
+    userDiv.innerText = `${USER_NAME}: ${question}\n\n`;
+    conversationDiv.appendChild(userDiv);
+
+    assistantDiv = document.createElement('div');
+    conversationDiv.appendChild(assistantDiv);
+
+    document.getElementById('output').appendChild(conversationDiv);
+    document.getElementById('question').value = '';
+}
 
 function addCopyButtons(container, content) {
     const button = document.createElement('button');
@@ -225,23 +235,18 @@ function addCopyButtons(container, content) {
     container.appendChild(button); 
 
     const clipboard = new ClipboardJS('.copy-btn');
-    clipboard.on('success', function (e) {
-        e.trigger.innerText = '复制成功';
-        setTimeout(() => {
-            e.trigger.innerText = '复制回答';
-        }, 2000);
-    });
-    clipboard.on('error', function (e) {
-        e.trigger.innerText = '复制失败';
-        setTimeout(() => {
-            e.trigger.innerText = '复制回答';
-        }, 2000);
-    });
+    clipboard.on('success', (e) => updateButtonText(e.trigger, '复制成功'));
+    clipboard.on('error', (e) => updateButtonText(e.trigger, '复制失败'));
 }
 
+function updateButtonText(button, text) {
+    button.innerText = text;
+    setTimeout(() => {
+        button.innerText = '复制回答';
+    }, 2000);
+}
 
 function refreshModels() {
-    // 清空对话历史
     if (isStreaming) {
         stopStream();
     }
@@ -251,7 +256,6 @@ function refreshModels() {
     document.getElementById('output').innerHTML = '';
     loadModels();
 }
-
 
 function reset() {
     window.loadConfig();
@@ -278,8 +282,6 @@ function pauseStream() {
     if (reader) {
         isPausing = true;
         document.getElementById('action-button').innerText = '继续';
-        
-        // 延迟添加复制按钮
         setTimeout(() => {
             addCopyButtons(assistantDiv, currentAssistantResponse);
         }, 500);
@@ -295,12 +297,16 @@ function resumeStream() {
 
 function handleAction() {
     const actionButton = document.getElementById('action-button');
-    if (actionButton.innerText === '暂停') {
-        pauseStream();
-    } else if (actionButton.innerText === '继续') {
-        resumeStream();
-    } else if (actionButton.innerText === '发送') {
-        stopStream();
-        askGPT();
+    switch (actionButton.innerText) {
+        case '暂停':
+            pauseStream();
+            break;
+        case '继续':
+            resumeStream();
+            break;
+        case '发送':
+            stopStream();
+            askGPT();
+            break;
     }
 }
