@@ -69,9 +69,13 @@
         });
 
 
-        // 绑定F5刷新页面事件
+        // 绑定页面事件
         document.addEventListener('keydown', function (event) {
             if (event.key === 'F5') {
+                event.preventDefault();
+                newChat();
+            }
+            if (event.ctrlKey && event.key === 't') {
                 event.preventDefault();
                 newChat();
             }
