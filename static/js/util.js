@@ -63,7 +63,7 @@ async function loadModels() {
         const data = await response.json();
         updateModelSelect(data.data);
     } catch (err) {
-        handleLoadModelError(err);
+        handleFetchError(err);
     }
 }
 
@@ -81,13 +81,6 @@ function updateModelSelect(models) {
         selectedModel = event.target.value;
     });
     document.getElementById('question').focus();
-}
-
-function handleLoadModelError(err) {
-    console.error('加载模型失败, 请检查网络或修改设置 ', err);
-    const outputDiv = document.getElementById('output');
-    outputDiv.innerHTML = '加载模型失败, 请检查网络或修改设置<br>' + err;
-    outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
 function waitForCondition(callback) {
@@ -119,9 +112,15 @@ function askGPT() {
             stream: true
         })
     };
-
     fetch(`${baseUrl}/chat/completions`, options)
-        .then(response => response.body)
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(errorData => {
+                    throw new Error(errorData.message || '对话请求失败');
+                });
+            }
+            return response.body;
+        })
         .then(body => {
             reader = body.getReader();
             isStreaming = true;
@@ -164,14 +163,17 @@ function handleFetchError(err) {
     console.error('发生错误:', err);
     isStreaming = false;
     document.getElementById('action-button').innerText = '发送';
-    alert('发生错误:' + err);
+    
+    const outputDiv = document.getElementById('output');
+    outputDiv.innerHTML = `发生错误: ${err}`;
+    outputDiv.scrollTop = outputDiv.scrollHeight;
 }
 
 function handleStreamedResponse(chunk) {
     const lines = chunk.split('\n').filter(line => line.trim() !== '');
     const model_name = document.getElementById('model-select').value;
     const outputDiv = document.getElementById('output');
-    
+
     lines.forEach(line => {
         const message = line.replace(/^data: /, '');
         if (message === '[DONE]') {
@@ -232,7 +234,7 @@ function addCopyButtons(container, content) {
     button.className = 'copy-btn';
     button.innerText = '复制回答';
     button.setAttribute('data-clipboard-text', content);
-    container.appendChild(button); 
+    container.appendChild(button);
 
     const clipboard = new ClipboardJS('.copy-btn');
     clipboard.on('success', (e) => updateButtonText(e.trigger, '复制成功'));
