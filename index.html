@@ -33,7 +33,7 @@
             <select id="model-select" title="选择模型"></select>
             <button onclick="newChat()">新会话</button>
             <button style="width: 10%;" onclick="window.openSetting()">设置</button>
-            <button style="width: 10%;" onclick=" reset()">刷新</button>
+            <button style="width: 10%;" onclick="reset()">刷新</button>
         </div>
         <div id="output"></div>
         <div class="bottom-row">
@@ -73,7 +73,7 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'F5') {
                 event.preventDefault();
-                newChat();
+                reset();
             }
             if (event.ctrlKey && event.key === 't') {
                 event.preventDefault();
